@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Salvation History: Level 1 - The Definition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@900&family=Orbitron:wght@500;900&family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --gold: #FFD700; 
+            --neon-blue: #00F3FF; 
+            --danger: #FF0033; 
+            --glass: rgba(10, 15, 20, 0.95); 
+        }
+        body { 
+            margin: 0; 
+            background: #050505; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            overflow: hidden; 
+            font-family: 'VT323', monospace; 
+            user-select: none; 
+        }
+        #cabinet { 
+            position: relative; 
+            width: 1100px; 
+            height: 800px; 
+            background: #111; 
+            border: 5px solid #222;
+            border-radius: 20px; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            overflow: hidden;
+        }
+        canvas { 
+            display: block; 
+            width: 100%; 
+            height: 100%; 
+            background: #1a1a1a; 
+        }
+        
+        /* UI Overlays */
+        .ui-layer { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            background: var(--glass); z-index: 60; 
+            transition: opacity 2s ease-in; /* Slower fade for dramatic effect */
+            padding: 40px;
+            box-sizing: border-box;
+        }
+        .hidden { opacity: 0; pointer-events: none; }
+        
+        /* Animation Classes */
+        .fade-hidden { opacity: 0; transition: opacity 1.5s ease-in; }
+        .fade-visible { opacity: 1; pointer-events: auto; }
+        
+        h1 { 
+            font-family: 'Cinzel', serif; font-size: 3.5em; color: var(--gold); 
+            text-shadow: 0 0 20px var(--gold); margin-bottom: 20px; text-align: center;
+        }
+        
+        /* Quote Box */
+        .quote-container {
+            border-left: 3px solid var(--neon-blue);
+            padding-left: 20px;
+            margin-bottom: 30px;
+            max-width: 800px;
+            min-height: 150px; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .quote-text {
+            font-family: 'Cinzel', serif;
+            color: #fff;
+            font-size: 1.4em;
+            font-style: italic;
+            line-height: 1.4;
+        }
+        .citation {
+            color: var(--neon-blue); 
+            font-size: 0.8em; 
+            font-family: 'Orbitron', sans-serif;
+            margin-top: 15px; 
+            display: block;
+            opacity: 0; 
+            transition: opacity 1s;
+        }
+        .citation.show { opacity: 1; }
+
+        /* Mission Text */
+        #mission-text { 
+            color: #ccc; 
+            font-size: 1.2em; 
+            max-width: 700px; 
+            text-align: center; 
+            line-height: 1.5; 
+            margin-bottom: 20px;
+        }
+        
+        button { 
+            margin-top: 20px;
+            background: transparent; color: var(--neon-blue); 
+            font-family: 'Orbitron', sans-serif; font-size: 1.5em; 
+            padding: 15px 50px; border: 2px solid var(--neon-blue); 
+            cursor: pointer; text-transform: uppercase; 
+            box-shadow: 0 0 10px var(--neon-blue);
+            transition: all 0.2s;
+        }
+        button:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 30px var(--neon-blue); }
+
+        #hud {
+            position: absolute; top: 20px; left: 30px; 
+            color: white; font-size: 24px; pointer-events: none;
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 5px var(--neon-blue);
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+
+<div id="cabinet">
+    <canvas id="gameCanvas" width="1100" height="800"></canvas>
+    
+    <div id="hud">ORDER RESTORED: <span id="score-display">0</span>/12</div>
+
+    <div id="screen-start" class="ui-layer">
+        <h1>THE DEFINITION</h1>
+        <div class="quote-container">
+            <span id="quote-target" class="quote-text"></span>
+            <span id="citation-target" class="citation">- POPE JOHN PAUL II, VERITATIS SPLENDOR -</span>
+        </div>
+        <div id="mission-group" class="fade-hidden">
+            <div id="mission-text">
+                Adam and Eve did not just eat fruit. They tried to become their own <strong>God-Kings</strong>, defining Right and Wrong for themselves. This shattered the Moral Order.
+                <br><br>
+                <strong>MISSION:</strong> Collect the fragments of Truth and restore the Scales.
+                <br>
+                <strong>AVOID:</strong> The <span style="color:var(--danger)">Red Apples</span>. They are the temptation to "decide for yourself."
+            </div>
+            <button onclick="startGame()">RESTORE THE LAW</button>
+        </div>
+    </div>
+
+    <div id="screen-win" class="ui-layer hidden">
+        <h1 style="color: var(--gold); text-shadow: 0 0 50px white;">THY WILL BE DONE</h1>
+        <h2 style="color: var(--neon-blue); font-family: 'Orbitron'; letter-spacing: 5px;">DIVINE ORDER RESTORED</h2>
+        <p style="text-align: center; max-width: 700px; font-size: 1.4em; color: #ccc;">
+            The chaos of pride has been banished by the peace of God's Law.
+        </p>
+        <button onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+</div>
+
+<script>
+/**
+ * LEVEL 1: THE DEFINITION (Cinematic Ending)
+ */
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+
+// --- CONFIG ---
+const IMAGE_SRC = 'scales.jpg'; 
+const COLS = 4;
+const ROWS = 3;
+const PIECE_SIZE = 80; 
+const PUZZLE_W = COLS * PIECE_SIZE;
+const PUZZLE_H = ROWS * PIECE_SIZE;
+const QUOTE_TEXT = '"Man cannot decide by himself what is good and what is evil; cannot ‘know good and evil, like God’...For God the Creator is the one definitive source of the moral order in the world created by Him."';
+
+// --- STATE ---
+let running = false;
+let endingPhase = 0; // 0=Play, 1=WalkToCenter, 2=KneelAndGlow
+let score = 0;
+let player = { x: 100, y: 300, w: 40, h: 40, speed: 400, carrying: null };
+let slots = [];
+let pieces = [];
+let apples = []; 
+let keys = {};
+let winTimer = 0;
+let flash = 0;
+let glowIntensity = 0;
+
+// Load Image
+const puzzleImg = new Image();
+puzzleImg.src = IMAGE_SRC;
+
+// --- AUDIO SYSTEM ---
+const AudioSys = {
+    ctx: new (window.AudioContext || window.webkitAudioContext)(),
+    playTone: function(freq, type, dur, vol=0.1) {
+        if(this.ctx.state === 'suspended') this.ctx.resume();
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = type; o.frequency.value = freq;
+        g.gain.setValueAtTime(vol, this.ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
+        o.connect(g); g.connect(this.ctx.destination);
+        o.start(); o.stop(this.ctx.currentTime + dur);
+    }
+};
+
+// --- INITIALIZATION ---
+function init() {
+    const startX = (W - PUZZLE_W) / 2;
+    const startY = (H - PUZZLE_H) / 2;
+
+    for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+            let id = r*COLS + c;
+            slots.push({x: startX + c*PIECE_SIZE, y: startY + r*PIECE_SIZE, w: PIECE_SIZE, h: PIECE_SIZE, id: id});
+            let px, py;
+            do {
+                px = Math.random() * (W - PIECE_SIZE);
+                py = Math.random() * (H - PIECE_SIZE);
+            } while (px > startX - 50 && px < startX + PUZZLE_W + 50 && py > startY - 50 && py < startY + PUZZLE_H + 50);
+            pieces.push({x: px, y: py, w: PIECE_SIZE, h: PIECE_SIZE, id: id, placed: false});
+        }
+    }
+
+    for(let i=0; i<6; i++) {
+        apples.push({x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - 0.5) * 150, vy: (Math.random() - 0.5) * 150, r: 20});
+    }
+
+    window.addEventListener('keydown', e => {
+        keys[e.code] = true;
+        if(e.code === 'Space') handleInteraction();
+        if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+        
+        // CHEAT FOR TESTING: Shift+1
+        if(e.shiftKey && e.key === '1') score = 12;
+    });
+    window.addEventListener('keyup', e => keys[e.code] = false);
+
+    typeWriter(QUOTE_TEXT, 'quote-target', 40);
+    requestAnimationFrame(loop);
+}
+
+function typeWriter(text, elementId, speed) {
+    const el = document.getElementById(elementId);
+    el.innerHTML = "";
+    let i = 0;
+    function type() {
+        if (i < text.length) {
+            el.innerHTML += text.charAt(i);
+            if(i % 3 === 0) AudioSys.playTone(800, 'sine', 0.05, 0.02);
+            i++;
+            setTimeout(type, speed);
+        } else {
+            document.getElementById('citation-target').classList.add('show');
+            setTimeout(() => { document.getElementById('mission-group').classList.add('fade-visible'); }, 1000);
+        }
+    }
+    type();
+}
+
+function startGame() {
+    document.getElementById('screen-start').classList.add('hidden');
+    running = true;
+    AudioSys.ctx.resume();
+}
+
+// --- LOGIC ---
+
+function handleInteraction() {
+    if(!running || endingPhase > 0) return; // No input during ending
+
+    if(player.carrying) {
+        let p = player.carrying;
+        let placed = false;
+        for(let s of slots) {
+            if(s.id === p.id && dist(player.x, player.y, s.x + s.w/2, s.y + s.h/2) < 60) {
+                p.x = s.x; p.y = s.y; p.placed = true;
+                player.carrying = null; placed = true; score++;
+                AudioSys.playTone(880, 'square', 0.1); 
+                document.getElementById('score-display').innerText = score;
+                break;
+            }
+        }
+        if(!placed) { player.carrying = null; AudioSys.playTone(200, 'sawtooth', 0.1); }
+    } else {
+        for(let p of pieces) {
+            if(!p.placed && dist(player.x, player.y, p.x + p.w/2, p.y + p.h/2) < 50) {
+                player.carrying = p; AudioSys.playTone(440, 'sine', 0.1); break;
+            }
+        }
+    }
+}
+
+function update(dt) {
+    if(!running) return;
+
+    // --- ENDING SEQUENCE LOGIC ---
+    if(score >= 12 && endingPhase === 0) {
+        // TRIGGER ENDING
+        endingPhase = 1;
+        apples = []; // Banish the lies
+        player.carrying = null;
+        AudioSys.playTone(600, 'sine', 1.0); // Holy tone
+    }
+
+    if(endingPhase === 1) {
+        // WALK TO CENTER
+        const targetX = W/2 - 20;
+        const targetY = H/2 + 200;
+        const dx = targetX - player.x;
+        const dy = targetY - player.y;
+        
+        player.x += dx * 2 * dt;
+        player.y += dy * 2 * dt;
+        
+        if(Math.abs(dx) < 2 && Math.abs(dy) < 2) {
+            endingPhase = 2; // Arrived
+        }
+    } 
+    else if (endingPhase === 2) {
+        // KNEEL & GLOW
+        glowIntensity += dt;
+        winTimer += dt;
+        if(winTimer > 4) {
+            document.getElementById('screen-win').classList.remove('hidden');
+        }
+    }
+    else {
+        // NORMAL PLAY
+        if(keys['ArrowUp']) player.y -= player.speed * dt;
+        if(keys['ArrowDown']) player.y += player.speed * dt;
+        if(keys['ArrowLeft']) player.x -= player.speed * dt;
+        if(keys['ArrowRight']) player.x += player.speed * dt;
+
+        player.x = Math.max(0, Math.min(W - player.w, player.x));
+        player.y = Math.max(0, Math.min(H - player.h, player.y));
+
+        apples.forEach(a => {
+            a.x += a.vx * dt; a.y += a.vy * dt;
+            if(a.x < 0 || a.x > W) a.vx *= -1;
+            if(a.y < 0 || a.y > H) a.vy *= -1;
+            if(dist(player.x + 20, player.y + 20, a.x, a.y) < a.r + 20) {
+                if(player.carrying && flash <= 0) {
+                    player.carrying = null; flash = 10; 
+                    AudioSys.playTone(100, 'sawtooth', 0.3);
+                }
+            }
+        });
+
+        if(player.carrying) {
+            player.carrying.x = player.x;
+            player.carrying.y = player.y - 40; 
+        }
+        if(flash > 0) flash--;
+    }
+}
+
+// --- RENDERING ---
+
+function draw() {
+    // BG
+    let g = ctx.createRadialGradient(W/2, H/2, 50, W/2, H/2, 800);
+    g.addColorStop(0, '#2c3e50');
+    g.addColorStop(1, '#000');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    // ENDING GLOW (Behind Puzzle)
+    if(endingPhase === 2) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, glowIntensity * 0.5);
+        ctx.shadowBlur = 100;
+        ctx.shadowColor = "gold";
+        ctx.fillStyle = "rgba(255, 215, 0, 0.2)";
+        ctx.fillRect((W - PUZZLE_W)/2 - 50, (H - PUZZLE_H)/2 - 50, PUZZLE_W + 100, PUZZLE_H + 100);
+        ctx.restore();
+    }
+
+    // Flash Red if hit
+    if(flash > 0) {
+        ctx.fillStyle = `rgba(255, 0, 0, ${flash/20})`;
+        ctx.fillRect(0,0,W,H);
+    }
+
+    // Ghost Image
+    if(puzzleImg.complete && endingPhase === 0) {
+        ctx.globalAlpha = 0.2;
+        ctx.drawImage(puzzleImg, 850, 300, 200, 150); 
+        ctx.strokeStyle = "#444";
+        ctx.strokeRect(850, 300, 200, 150);
+        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = "#666";
+        ctx.font = "16px monospace";
+        ctx.fillText("GOD'S DEFINITION", 850, 290);
+    }
+
+    // Slots & Pieces
+    ctx.strokeStyle = endingPhase > 0 ? "rgba(255, 215, 0, 1)" : "rgba(255, 215, 0, 0.3)";
+    ctx.lineWidth = 2;
+    for(let s of slots) ctx.strokeRect(s.x, s.y, s.w, s.h);
+    for(let p of pieces) drawPiece(p);
+    for(let a of apples) drawApple(a);
+
+    drawPlayer();
+    
+    // Kneeling text
+    if(endingPhase === 2 && winTimer > 1.5) {
+        ctx.fillStyle = "white";
+        ctx.font = "20px 'Cinzel'";
+        ctx.fillText("Thy Will Be Done.", player.x - 30, player.y - 20);
+    }
+}
+
+function drawApple(a) {
+    ctx.fillStyle = '#FF0033'; 
+    ctx.shadowBlur = 10; ctx.shadowColor = '#FF0033';
+    ctx.beginPath(); ctx.arc(a.x, a.y, a.r, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#0f0'; ctx.fillRect(a.x - 2, a.y - 25, 4, 10);
+}
+
+function drawPiece(p) {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    // If ending, make pieces glow
+    if(endingPhase > 0) {
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = "gold";
+    }
+    ctx.fillStyle = '#222'; ctx.fillRect(0,0, p.w, p.h);
+    if(puzzleImg.complete && puzzleImg.naturalWidth > 0) {
+        let col = p.id % COLS; let row = Math.floor(p.id / COLS);
+        let sw = puzzleImg.naturalWidth / COLS; let sh = puzzleImg.naturalHeight / ROWS;
+        ctx.drawImage(puzzleImg, col * sw, row * sh, sw, sh, 0, 0, p.w, p.h);
+    } else {
+        ctx.fillStyle = '#444'; ctx.fillText(p.id, 30, 45);
+    }
+    ctx.strokeStyle = p.placed ? '#39FF14' : '#FFD700'; ctx.strokeRect(0,0, p.w, p.h);
+    ctx.restore();
+}
+
+function drawPlayer() {
+    const size = 40; 
+    const holding = player.carrying !== null;
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    const p = size / 10; 
+
+    // Visual change for Kneeling (Ending Phase 2)
+    if(endingPhase === 2) {
+        ctx.translate(0, 15); // Move down
+        ctx.scale(1, 0.7); // Squish height
+    }
+
+    ctx.fillStyle = '#b0bec5'; ctx.fillRect(2*p, 2*p, 6*p, 8*p); 
+    ctx.fillStyle = '#f5f5f5'; ctx.fillRect(3*p, 2*p, 4*p, 3*p); 
+    ctx.fillStyle = '#546e7a'; ctx.fillRect(2*p, 1*p, 6*p, 2*p); 
+
+    if(holding) { 
+        ctx.fillStyle = '#b0bec5'; ctx.fillRect(0*p, 1*p, 2*p, 4*p); ctx.fillRect(8*p, 1*p, 2*p, 4*p); 
+    } else if (endingPhase === 2) {
+        // Prayer hands?
+        ctx.fillStyle = '#b0bec5'; ctx.fillRect(3*p, 5*p, 4*p, 4*p); 
+    } else { 
+        ctx.fillStyle = '#b0bec5'; ctx.fillRect(0, 3*p, 2*p, 5*p); ctx.fillRect(8*p, 3*p, 2*p, 5*p); 
+    }
+    ctx.restore();
+}
+
+function loop(time) {
+    let dt = (time - lastTime) / 1000;
+    lastTime = time;
+    if(dt > 0.1) dt = 0.1; 
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+}
+
+function dist(x1, y1, x2, y2) { return Math.sqrt( (x1-x2)**2 + (y1-y2)**2 ); }
+
+let lastTime = 0;
+init();
+
+</script>
+</body>
+</html>
